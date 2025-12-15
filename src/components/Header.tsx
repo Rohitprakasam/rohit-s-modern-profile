@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Menu, X } from "lucide-react";
 
 const navItems = [
@@ -9,6 +9,18 @@ const navItems = [
   { name: "Contact me", href: "#contact" },
 ];
 
+const SplineLogo = () => {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (containerRef.current) {
+      containerRef.current.innerHTML = `<spline-viewer url="https://prod.spline.design/xUQZGO7CHN68MwLq/scene.splinecode" style="width: 60px; height: 60px;"></spline-viewer>`;
+    }
+  }, []);
+
+  return <div ref={containerRef} className="w-[60px] h-[60px]" />;
+};
+
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -16,8 +28,8 @@ const Header = () => {
     <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/50">
       <div className="container mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
-          <a href="#home" className="text-2xl font-bold text-primary">
-            LOGO
+          <a href="#home" className="flex items-center">
+            <SplineLogo />
           </a>
 
           {/* Desktop Navigation */}
