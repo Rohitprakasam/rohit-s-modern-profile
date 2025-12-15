@@ -12,11 +12,15 @@ const HeroSection = () => {
   return (
     <section
       id="home"
-      className="min-h-screen bg-diagonal-dark pt-24 pb-12 flex items-center relative overflow-hidden"
+      className="min-h-screen pt-24 pb-12 flex items-center relative overflow-hidden"
     >
-      {/* Background decorative elements */}
-      <div className="absolute top-1/4 right-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
-      <div className="absolute bottom-0 left-0 w-64 h-64 bg-primary/3 rounded-full blur-2xl" />
+      {/* Spline 3D Background */}
+      <div className="absolute inset-0 -z-10">
+        <spline-viewer 
+          url="https://prod.spline.design/XLsvKcHnq31mMgRd/scene.splinecode"
+          style={{ width: '100%', height: '100%' }}
+        />
+      </div>
 
       <div className="container mx-auto px-6">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
@@ -63,19 +67,14 @@ const HeroSection = () => {
             </div>
           </div>
 
-          {/* Right Content - Profile Image with Spline Background */}
+          {/* Right Content - Profile Image */}
           <div className="order-1 lg:order-2 flex justify-center animate-scale-in [animation-delay:0.2s]">
-            <div className="relative w-80 h-80 md:w-[500px] md:h-[500px]">
-              {/* Spline 3D Background */}
-              <div className="absolute inset-0 -z-10">
-                <spline-viewer 
-                  url="https://prod.spline.design/XLsvKcHnq31mMgRd/scene.splinecode"
-                  style={{ width: '100%', height: '100%' }}
-                />
-              </div>
+            <div className="relative">
+              {/* Background circle */}
+              <div className="absolute w-80 h-80 md:w-96 md:h-96 rounded-full bg-gradient-to-br from-muted/50 to-secondary/50 left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2" />
               
               {/* Profile image */}
-              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-56 md:w-64 md:h-72 overflow-hidden">
+              <div className="relative w-72 h-80 md:w-80 md:h-96 overflow-hidden">
                 <img
                   src={profileImage}
                   alt="Rohit Prakasam - System Administrator"
