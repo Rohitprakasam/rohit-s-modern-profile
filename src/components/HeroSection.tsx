@@ -63,17 +63,19 @@ const HeroSection = () => {
             </div>
           </div>
 
-          {/* Right Content - Profile Image */}
+          {/* Right Content - Profile Image with Spline Background */}
           <div className="order-1 lg:order-2 flex justify-center animate-scale-in [animation-delay:0.2s]">
-            <div className="relative">
-              {/* Background circle */}
-              <div className="absolute w-80 h-80 md:w-96 md:h-96 rounded-full bg-gradient-to-br from-muted to-secondary left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2" />
-              
-              {/* Outer glow ring */}
-              <div className="absolute w-80 h-80 md:w-96 md:h-96 rounded-full border border-border/50 left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2" />
+            <div className="relative w-80 h-80 md:w-[500px] md:h-[500px]">
+              {/* Spline 3D Background */}
+              <div className="absolute inset-0 -z-10">
+                <spline-viewer 
+                  url="https://prod.spline.design/XLsvKcHnq31mMgRd/scene.splinecode"
+                  style={{ width: '100%', height: '100%' }}
+                />
+              </div>
               
               {/* Profile image */}
-              <div className="relative w-72 h-80 md:w-80 md:h-96 overflow-hidden">
+              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-56 md:w-64 md:h-72 overflow-hidden">
                 <img
                   src={profileImage}
                   alt="Rohit Prakasam - System Administrator"
