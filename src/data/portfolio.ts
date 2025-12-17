@@ -7,7 +7,7 @@ export const portfolioData = {
     },
     "heroSection": {
         "greeting": "Hi I am",
-        "fullName": "Rohit Prakasam",
+        "fullName": "Rohit Prakasam G",
         "designation": "System Administrator",
         "tagline": "Cybersecurity & Linux Infrastructure Specialist",
         "ctaButtons": [
@@ -41,7 +41,7 @@ export const portfolioData = {
     },
     "aboutMe": {
         "title": "About Me",
-        "description": "Certified and results-oriented final-year Computer and Communication Engineering student with specialization in System Administration and Cybersecurity. Skilled in Linux server management, automation, and network security, with proven certifications in RHCSA and Ethical Hacking. Passionate about building and protecting robust IT infrastructure in challenging environments."
+        "description": "Certified and results-oriented final-year Computer and Communication Engineering student with specialization in System Administration and Cybersecurity. Skilled in Linux server management, automation, and network security, with proven certifications in RHCSA and Ethical Hacking. Passionate about building and protecting robust IT infrastructure in challenging environments. 😊😊"
     },
     "skills": [
         {
@@ -84,6 +84,12 @@ export const portfolioData = {
                 "Analytical Thinking",
                 "Team Collaboration"
             ]
+        },
+        {
+            "category": "New Category backery",
+            "items": [
+                "cooking"
+            ]
         }
     ],
     "experience": [
@@ -107,6 +113,15 @@ export const portfolioData = {
                 "Contributed to development by writing optimized Python scripts for data processing tasks.",
                 "Analyzed and organized large datasets for testing workflows.",
                 "Assisted in algorithm testing, debugging, and documentation."
+            ]
+        },
+        {
+            "role": "Arasan backery and sweets",
+            "organization": "Company",
+            "duration": "Jan 2024 - Present",
+            "location": "City",
+            "highlights": [
+                "Hello"
             ]
         }
     ],
@@ -158,6 +173,12 @@ export const portfolioData = {
                 "WiFi",
                 "Penetration Testing"
             ],
+            "status": "finished"
+        },
+        {
+            "title": "New Project",
+            "description": "Description...backery",
+            "tags": [],
             "status": "finished"
         }
     ],
