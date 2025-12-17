@@ -7,7 +7,7 @@ export const portfolioData = {
     },
     "heroSection": {
         "greeting": "Hi I am",
-        "fullName": "Rohit Prakasam",
+        "fullName": "Rohit Prakasam G",
         "designation": "System Administrator",
         "tagline": "Cybersecurity & Linux Infrastructure Specialist",
         "ctaButtons": [
@@ -114,15 +114,6 @@ export const portfolioData = {
                 "Analyzed and organized large datasets for testing workflows.",
                 "Assisted in algorithm testing, debugging, and documentation."
             ]
-        },
-        {
-            "role": "Arasan backery and sweets",
-            "organization": "Company",
-            "duration": "Jan 2024 - Present",
-            "location": "City",
-            "highlights": [
-                "Hello"
-            ]
         }
     ],
     "education": [
@@ -190,11 +181,6 @@ export const portfolioData = {
         },
         {
             "title": "Ethical Hacking Certification – Larsen & Toubro",
-            "url": "#",
-            "type": "other"
-        },
-        {
-            "title": "New Certification",
             "url": "#",
             "type": "other"
         }
