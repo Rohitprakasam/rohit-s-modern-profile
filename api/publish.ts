@@ -106,6 +106,16 @@ export interface Comment {
         }
 
         const data = await updateResponse.json();
+
+        // 4. Trigger Vercel Deploy Hook
+        try {
+            await fetch("https://api.vercel.com/v1/integrations/deploy/prj_c3xc2MFE0xkNc8vghcsnGpeH2oMV/TS3GqjOsGA", {
+                method: "POST"
+            });
+        } catch (e) {
+            console.error("Deploy hook failed", e);
+        }
+
         return res.status(200).json({ success: true, commit: data.commit.html_url });
 
     } catch (error: any) {
