@@ -171,11 +171,6 @@ export const portfolioData = {
             "title": "Ethical Hacking Certification – Larsen & Toubro",
             "url": "#",
             "type": "other"
-        },
-        {
-            "title": "Wipro Full Stack",
-            "url": "#",
-            "type": "other"
         }
     ],
     "interests": [
@@ -243,6 +238,23 @@ export const portfolioData = {
                 "Security",
                 "Server"
             ]
+        },
+        {
+            "id": "1765959172086",
+            "title": "This is my First post",
+            "subtitle": "Subtitle",
+            "content": "<p>Content...</p>",
+            "image": "https://images.unsplash.com/photo-1550751827-4bd374c3f58b",
+            "author": {
+                "name": "Rohit Prakasam",
+                "avatar": "/profile.png",
+                "role": "System Administrator"
+            },
+            "date": "Dec 17, 2025",
+            "readTime": "5 min read",
+            "likes": 0,
+            "comments": [],
+            "tags": []
         }
     ]
 };
