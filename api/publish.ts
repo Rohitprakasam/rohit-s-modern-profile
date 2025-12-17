@@ -86,7 +86,6 @@ export interface Comment {
                 message: 'chore(cms): update portfolio data via admin panel',
                 content: contentBase64,
                 sha: sha,
-                sha: sha,
                 branch: 'main',
                 committer: {
                     name: 'Rajalakshmi G',
@@ -108,15 +107,28 @@ export interface Comment {
         const data = await updateResponse.json();
 
         // 4. Trigger Vercel Deploy Hook
+        let hookStatus = 0;
+        let hookDetails = "";
         try {
-            await fetch("https://api.vercel.com/v1/integrations/deploy/prj_c3xc2MFE0xkNc8vghcsnGpeH2oMV/TS3GqjOsGA", {
+            const hookRes = await fetch("https://api.vercel.com/v1/integrations/deploy/prj_c3xc2MFE0xkNc8vghcsnGpeH2oMV/j7x31Pg5wI", {
                 method: "POST"
             });
-        } catch (e) {
+            hookStatus = hookRes.status;
+            if (!hookRes.ok) {
+                hookDetails = await hookRes.text();
+                console.error("Deploy hook failed", hookStatus, hookDetails);
+            }
+        } catch (e: any) {
             console.error("Deploy hook failed", e);
+            hookDetails = e.message;
         }
 
-        return res.status(200).json({ success: true, commit: data.commit.html_url });
+        return res.status(200).json({
+            success: true,
+            commit: data.commit.html_url,
+            hookStatus: hookStatus,
+            hookDetails: hookDetails
+        });
 
     } catch (error: any) {
         console.error('Internal Server Error:', error);

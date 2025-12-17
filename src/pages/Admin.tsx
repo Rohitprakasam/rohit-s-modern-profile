@@ -132,7 +132,12 @@ const Admin = () => {
 
         toast.promise(promise, {
             loading: "Publishing to GitHub...",
-            success: "Changes published! Site will update in ~1 min.",
+            success: (data: any) => {
+                if (data.hookStatus >= 400 || data.hookStatus === 0) {
+                    return `Saved to GitHub, but Deployment Trigger failed (Status: ${data.hookStatus}).`;
+                }
+                return "Changes published! Site will update in ~2 mins.";
+            },
             error: (err) => {
                 console.error("Publish Error Details:", err);
                 return `Publish failed: ${err.message}`;
