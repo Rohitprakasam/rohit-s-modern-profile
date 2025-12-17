@@ -7,7 +7,7 @@ export const portfolioData = {
     },
     "heroSection": {
         "greeting": "Hi I am",
-        "fullName": "Rohit Prakasam ",
+        "fullName": "Rohit g",
         "designation": "System Administrator",
         "tagline": "Cybersecurity & Linux Infrastructure Specialist",
         "ctaButtons": [
@@ -108,6 +108,13 @@ export const portfolioData = {
                 "Analyzed and organized large datasets for testing workflows.",
                 "Assisted in algorithm testing, debugging, and documentation."
             ]
+        },
+        {
+            "role": "New Role",
+            "organization": "Company",
+            "duration": "Jan 2024 - Present",
+            "location": "City",
+            "highlights": []
         }
     ],
     "education": [
