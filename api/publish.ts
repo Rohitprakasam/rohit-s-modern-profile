@@ -86,7 +86,16 @@ export interface Comment {
                 message: 'chore(cms): update portfolio data via admin panel',
                 content: contentBase64,
                 sha: sha,
-                branch: 'main' // or 'master', assuming 'main'
+                sha: sha,
+                branch: 'main',
+                committer: {
+                    name: 'Rajalakshmi G',
+                    email: 'rajalakshmig1981@gmail.com'
+                },
+                author: {
+                    name: 'Rajalakshmi G',
+                    email: 'rajalakshmig1981@gmail.com'
+                }
             }),
         });
 
