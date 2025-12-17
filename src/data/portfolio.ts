@@ -7,7 +7,7 @@ export const portfolioData = {
     },
     "heroSection": {
         "greeting": "Hi I am",
-        "fullName": "Rohit Prakasam G",
+        "fullName": "Rohit Prakasam ",
         "designation": "System Administrator",
         "tagline": "Cybersecurity & Linux Infrastructure Specialist",
         "ctaButtons": [
