@@ -192,6 +192,11 @@ export const portfolioData = {
             "title": "Ethical Hacking Certification – Larsen & Toubro",
             "url": "#",
             "type": "other"
+        },
+        {
+            "title": "New Certification",
+            "url": "#",
+            "type": "other"
         }
     ],
     "interests": [
