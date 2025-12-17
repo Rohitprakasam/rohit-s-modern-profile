@@ -84,12 +84,6 @@ export const portfolioData = {
                 "Analytical Thinking",
                 "Team Collaboration"
             ]
-        },
-        {
-            "category": "New Category backery",
-            "items": [
-                "cooking"
-            ]
         }
     ],
     "experience": [
@@ -164,12 +158,6 @@ export const portfolioData = {
                 "WiFi",
                 "Penetration Testing"
             ],
-            "status": "finished"
-        },
-        {
-            "title": "New Project",
-            "description": "Description...backery",
-            "tags": [],
             "status": "finished"
         }
     ],
