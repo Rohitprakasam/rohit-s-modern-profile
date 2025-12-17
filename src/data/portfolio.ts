@@ -6,7 +6,7 @@ export const portfolioData = {
         "secondaryColor": "#00ffe5"
     },
     "heroSection": {
-        "greeting": "Hi I am",
+        "greeting": "Hi I amPRAKASAM G",
         "fullName": "Rohit Prakasam G",
         "designation": "System Administrator",
         "tagline": "Cybersecurity & Linux Infrastructure Specialist",
@@ -108,13 +108,6 @@ export const portfolioData = {
                 "Analyzed and organized large datasets for testing workflows.",
                 "Assisted in algorithm testing, debugging, and documentation."
             ]
-        },
-        {
-            "role": "New Role",
-            "organization": "Company",
-            "duration": "Jan 2024 - Present",
-            "location": "City",
-            "highlights": []
         }
     ],
     "education": [
