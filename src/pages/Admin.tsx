@@ -1,58 +1,104 @@
+
 import { useState, useEffect } from "react";
-import { portfolioData } from "@/data/portfolio";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Lock, Save, Download, LogOut, Plus, Trash2, Upload, Loader2, Globe } from "lucide-react";
+import { Lock, Save, Download, LogOut, Plus, Trash2, Globe, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { usePortfolio } from "@/hooks/usePortfolioData";
+import { useQueryClient } from "@tanstack/react-query";
 
 const Admin = () => {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [password, setPassword] = useState("");
-    const [data, setData] = useState(portfolioData);
+
+    // We maintain a local "draft" state that starts with the fetched data
+    const { data: fetchedData, isLoading } = usePortfolio() as any; // Cast for now
+    const [data, setData] = useState<any>(null);
+
     const [messages, setMessages] = useState<any[]>([]);
     const [isPublishing, setIsPublishing] = useState(false);
+    const queryClient = useQueryClient();
 
+    // Load initial data only when fully loaded AND not already set
     useEffect(() => {
-        const saved = localStorage.getItem("portfolioData");
-        if (saved) {
-            try {
-                setData(JSON.parse(saved));
-            } catch (e) {
-                console.error("Failed to load saved data", e);
-            }
+        if (!data && fetchedData && !isLoading && fetchedData.siteMeta) {
+            setData(fetchedData);
         }
+    }, [fetchedData, isLoading, data]);
 
-        const savedMessages = localStorage.getItem("contactMessages");
-        if (savedMessages) {
-            try {
-                setMessages(JSON.parse(savedMessages));
-            } catch (e) {
-                console.error("Failed to load messages", e);
-            }
+    // Load messages separately
+    useEffect(() => {
+        if (isAuthenticated) {
+            fetch("/api/crud?collection=messages")
+                .then(res => res.json())
+                .then(msgs => setMessages(msgs))
+                .catch(err => console.error("Failed to fetch messages", err));
         }
-    }, []);
+    }, [isAuthenticated]);
 
-    const handleLogin = (e: React.FormEvent) => {
+    const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (password === "port@rohit@123") {
-            setIsAuthenticated(true);
-            toast.success("Welcome back, Admin!");
-        } else {
-            toast.error("Invalid credentials");
+        try {
+            const res = await fetch("/api/auth", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ password }),
+            });
+            const data = await res.json();
+
+            if (res.ok && data.success) {
+                setIsAuthenticated(true);
+                toast.success("Welcome back, Admin!");
+            } else {
+                toast.error("Invalid credentials");
+            }
+        } catch (error) {
+            toast.error("Login failed. Check connection.");
         }
     };
 
-    const handleSave = () => {
+    const handleSave = async () => {
+        if (!data) return;
+        setIsPublishing(true);
+        toast.info("Saving changes...");
+
         try {
-            localStorage.setItem("portfolioData", JSON.stringify(data));
-            toast.success("Changes saved to local storage");
-        } catch (e) {
-            toast.error("Failed to save! File usage might exceed browser storage limits.");
+            // Parallel requests to update all collections
+            // For Profile (Hero, About, etc.)
+            const profilePayload = {
+                siteMeta: data.siteMeta,
+                heroSection: data.heroSection,
+                aboutMe: data.aboutMe,
+                contact: data.contact,
+                interests: data.interests
+            };
+
+            await Promise.all([
+                fetch("/api/profile", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(profilePayload) }),
+                fetch("/api/crud?collection=skills", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data.skills || []) }),
+                fetch("/api/crud?collection=projects", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data.projects || []) }),
+                fetch("/api/crud?collection=experience", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data.experience || []) }),
+                fetch("/api/crud?collection=education", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data.education || []) }),
+                fetch("/api/crud?collection=certifications", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data.certifications || []) }),
+                fetch("/api/crud?collection=posts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data.posts || []) })
+            ]);
+
+            toast.success("All changes saved to database!");
+            queryClient.invalidateQueries(); // Refresh data
+        } catch (e: any) {
+            console.error(e);
+            toast.error("Failed to save changes: " + e.message);
+        } finally {
+            setIsPublishing(false);
         }
     };
+
+    // We removed 'handlePublish' logic as saving to DB handles the "dynamic" requirement. 
+    // The previous 'Publish Changes' button logic triggered a GH workflow, which is less relevant for dynamic content.
+    // We can keep a "Deploy" button if users want to redeploy code, but for content, "Save" is enough.
 
     const handleDownload = () => {
         const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data, null, 2));
@@ -66,7 +112,7 @@ const Admin = () => {
     };
 
     const updateHero = (field: string, value: string) => {
-        setData(prev => ({
+        setData((prev: any) => ({
             ...prev,
             heroSection: { ...prev.heroSection, [field]: value }
         }));
@@ -75,8 +121,8 @@ const Admin = () => {
     const handleFileUpload = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
-            if (file.size > 2 * 1024 * 1024) { // 2MB limit check for LS safety though Base64 increases size
-                toast.warning("File is large. Local storage might fail. Recommended < 1MB.");
+            if (file.size > 4 * 1024 * 1024) {
+                toast.warning("File is large. Database might reject > 4MB.");
             }
 
             const reader = new FileReader();
@@ -87,69 +133,27 @@ const Admin = () => {
                 else if (file.type.includes('image')) type = 'image';
 
                 const newCerts = [...data.certifications];
-                // @ts-ignore
                 newCerts[index] = { ...newCerts[index], url: base64String, type: type };
-                // @ts-ignore
-                setData(prev => ({ ...prev, certifications: newCerts }));
+                setData((prev: any) => ({ ...prev, certifications: newCerts }));
                 toast.success("File uploaded successfully");
             };
             reader.readAsDataURL(file);
         }
     };
 
-    const handleDeleteMessage = (id: string) => {
-        const newMessages = messages.filter(m => m.id !== id);
-        setMessages(newMessages);
-        localStorage.setItem("contactMessages", JSON.stringify(newMessages));
-        toast.success("Message deleted");
-    };
-
-    const handlePublish = async () => {
-        setIsPublishing(true);
-
-        // Check Payload Size (Vercel Serverless Function Limit is 4.5MB)
-        const payload = JSON.stringify({ portfolioData: data });
-        const sizeInBytes = new Blob([payload]).size;
-        const sizeInMB = sizeInBytes / (1024 * 1024);
-
-        if (sizeInMB > 4) {
-            toast.error(`Changes too large (${sizeInMB.toFixed(2)}MB). Max 4MB. Please use smaller images.`);
-            setIsPublishing(false);
-            return;
-        }
-
-        const promise = fetch("/api/publish", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: payload,
-        }).then(async (res) => {
-            if (!res.ok) {
-                const err = await res.json().catch(() => ({ details: { message: res.statusText } })); // Safe error parsing
-                throw new Error(err.details?.message || err.error || "Failed to publish");
-            }
-            return res.json();
-        });
-
-        toast.promise(promise, {
-            loading: "Publishing to GitHub...",
-            success: (data: any) => {
-                if (data.hookStatus >= 400 || data.hookStatus === 0) {
-                    return `Saved to GitHub, but Deployment Trigger failed (Status: ${data.hookStatus}).`;
-                }
-                return "Changes published! Site will update in ~2 mins.";
-            },
-            error: (err) => {
-                console.error("Publish Error Details:", err);
-                return `Publish failed: ${err.message}`;
-            },
-        });
+    const handleDeleteMessage = async (id: string, _id?: string) => {
+        // Optimistic update
+        const originalMessages = messages;
+        setMessages(messages.filter(m => m.id !== id));
 
         try {
-            await promise;
+            // Try deleting by mongo _id if available, else standard id (which might be mongo id string)
+            const targetId = _id || id;
+            await fetch(`/api/crud?collection=messages&id=${targetId}`, { method: 'DELETE' });
+            toast.success("Message deleted");
         } catch (e) {
-            console.error(e);
-        } finally {
-            setIsPublishing(false);
+            toast.error("Failed to delete message");
+            setMessages(originalMessages);
         }
     };
 
@@ -184,8 +188,9 @@ const Admin = () => {
         );
     }
 
-    // Helper type guard or cast for map
-    const certifications = data.certifications as any[];
+    if (!data) return <div className="min-h-screen flex items-center justify-center">Loading Data...</div>;
+
+    const certifications = data.certifications || [];
 
     return (
         <div className="min-h-screen bg-background">
@@ -196,12 +201,9 @@ const Admin = () => {
                         <Button variant="outline" size="sm" onClick={handleDownload} className="gap-2 hidden md:flex">
                             <Download className="w-4 h-4" /> Export JSON
                         </Button>
-                        <Button size="sm" onClick={handleSave} className="gap-2 bg-muted text-muted-foreground hover:bg-muted/80">
-                            <Save className="w-4 h-4" /> Save Local
-                        </Button>
-                        <Button size="sm" onClick={handlePublish} disabled={isPublishing} className="gap-2 bg-gradient-to-r from-primary to-orange-500 text-black font-semibold hover:opacity-90 transition-opacity">
-                            {isPublishing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Globe className="w-4 h-4" />}
-                            {isPublishing ? "Publishing..." : "Publish Changes"}
+                        <Button size="sm" onClick={handleSave} disabled={isPublishing} className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90">
+                            {isPublishing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                            {isPublishing ? "Saving..." : "Save Changes"}
                         </Button>
                         <Button variant="ghost" size="icon" onClick={() => setIsAuthenticated(false)}>
                             <LogOut className="w-4 h-4" />
@@ -273,7 +275,7 @@ const Admin = () => {
                                     <label className="text-sm font-medium">Description</label>
                                     <Textarea
                                         value={data.aboutMe.description}
-                                        onChange={(e) => setData(prev => ({
+                                        onChange={(e) => setData((prev: any) => ({
                                             ...prev,
                                             aboutMe: { ...prev.aboutMe, description: e.target.value }
                                         }))}
@@ -288,15 +290,13 @@ const Admin = () => {
                         <Card className="bg-card/50 border-white/5">
                             <CardHeader><CardTitle>Skills</CardTitle></CardHeader>
                             <CardContent className="space-y-6">
-                                {/* @ts-ignore */}
-                                {data.skills.map((skillGroup, idx) => (
+                                {(data.skills || []).map((skillGroup: any, idx: number) => (
                                     <div key={idx} className="p-4 border border-white/10 rounded bg-black/20 space-y-3">
                                         <div className="flex justify-between items-center">
                                             <label className="text-sm font-medium">Category Name</label>
                                             <Button variant="ghost" size="icon" onClick={() => {
-                                                // @ts-ignore
-                                                const newSkills = data.skills.filter((_, i) => i !== idx);
-                                                setData(prev => ({ ...prev, skills: newSkills }));
+                                                const newSkills = data.skills.filter((_: any, i: number) => i !== idx);
+                                                setData((prev: any) => ({ ...prev, skills: newSkills }));
                                             }} className="text-destructive hover:text-destructive/80">
                                                 <Trash2 size={16} />
                                             </Button>
@@ -304,10 +304,9 @@ const Admin = () => {
                                         <Input
                                             value={skillGroup.category}
                                             onChange={(e) => {
-                                                // @ts-ignore
                                                 const newSkills = [...data.skills];
                                                 newSkills[idx] = { ...newSkills[idx], category: e.target.value };
-                                                setData(prev => ({ ...prev, skills: newSkills }));
+                                                setData((prev: any) => ({ ...prev, skills: newSkills }));
                                             }}
                                             placeholder="Category (e.g., Frontend)"
                                         />
@@ -317,13 +316,12 @@ const Admin = () => {
                                             <Textarea
                                                 value={skillGroup.items.join(", ")}
                                                 onChange={(e) => {
-                                                    // @ts-ignore
                                                     const newSkills = [...data.skills];
                                                     newSkills[idx] = {
                                                         ...newSkills[idx],
-                                                        items: e.target.value.split(",").map(s => s.trim()).filter(s => s)
+                                                        items: e.target.value.split(",").map((s: string) => s.trim()).filter((s: string) => s)
                                                     };
-                                                    setData(prev => ({ ...prev, skills: newSkills }));
+                                                    setData((prev: any) => ({ ...prev, skills: newSkills }));
                                                 }}
                                                 placeholder="React, TypeScript, Tailwind..."
                                                 className="min-h-[80px]"
@@ -332,8 +330,7 @@ const Admin = () => {
                                     </div>
                                 ))}
                                 <Button variant="outline" className="w-full gap-2" onClick={() => {
-                                    // @ts-ignore
-                                    setData(prev => ({ ...prev, skills: [...prev.skills, { category: "New Category", items: [] }] }));
+                                    setData((prev: any) => ({ ...prev, skills: [...(prev.skills || []), { category: "New Category", items: [] }] }));
                                 }}>
                                     <Plus size={16} /> Add Skill Category
                                 </Button>
@@ -345,15 +342,13 @@ const Admin = () => {
                         <Card className="bg-card/50 border-white/5">
                             <CardHeader><CardTitle>Internships</CardTitle></CardHeader>
                             <CardContent className="space-y-6">
-                                {/* @ts-ignore */}
-                                {data.experience.map((exp, idx) => (
+                                {(data.experience || []).map((exp: any, idx: number) => (
                                     <div key={idx} className="p-4 border border-white/10 rounded bg-black/20 space-y-3">
                                         <div className="flex justify-between items-center mb-2">
                                             <span className="text-sm font-medium text-muted-foreground">Internship #{idx + 1}</span>
                                             <Button variant="ghost" size="icon" onClick={() => {
-                                                // @ts-ignore
-                                                const newExp = data.experience.filter((_, i) => i !== idx);
-                                                setData(prev => ({ ...prev, experience: newExp }));
+                                                const newExp = data.experience.filter((_: any, i: number) => i !== idx);
+                                                setData((prev: any) => ({ ...prev, experience: newExp }));
                                             }} className="text-destructive hover:text-destructive/80">
                                                 <Trash2 size={16} />
                                             </Button>
@@ -365,10 +360,9 @@ const Admin = () => {
                                                 <Input
                                                     value={exp.role}
                                                     onChange={(e) => {
-                                                        // @ts-ignore
                                                         const newExp = [...data.experience];
                                                         newExp[idx] = { ...newExp[idx], role: e.target.value };
-                                                        setData(prev => ({ ...prev, experience: newExp }));
+                                                        setData((prev: any) => ({ ...prev, experience: newExp }));
                                                     }}
                                                     placeholder="Role"
                                                 />
@@ -378,10 +372,9 @@ const Admin = () => {
                                                 <Input
                                                     value={exp.organization}
                                                     onChange={(e) => {
-                                                        // @ts-ignore
                                                         const newExp = [...data.experience];
                                                         newExp[idx] = { ...newExp[idx], organization: e.target.value };
-                                                        setData(prev => ({ ...prev, experience: newExp }));
+                                                        setData((prev: any) => ({ ...prev, experience: newExp }));
                                                     }}
                                                     placeholder="Organization"
                                                 />
@@ -391,10 +384,9 @@ const Admin = () => {
                                                 <Input
                                                     value={exp.duration}
                                                     onChange={(e) => {
-                                                        // @ts-ignore
                                                         const newExp = [...data.experience];
                                                         newExp[idx] = { ...newExp[idx], duration: e.target.value };
-                                                        setData(prev => ({ ...prev, experience: newExp }));
+                                                        setData((prev: any) => ({ ...prev, experience: newExp }));
                                                     }}
                                                     placeholder="Duration"
                                                 />
@@ -404,10 +396,9 @@ const Admin = () => {
                                                 <Input
                                                     value={exp.location}
                                                     onChange={(e) => {
-                                                        // @ts-ignore
                                                         const newExp = [...data.experience];
                                                         newExp[idx] = { ...newExp[idx], location: e.target.value };
-                                                        setData(prev => ({ ...prev, experience: newExp }));
+                                                        setData((prev: any) => ({ ...prev, experience: newExp }));
                                                     }}
                                                     placeholder="Location"
                                                 />
@@ -419,13 +410,12 @@ const Admin = () => {
                                             <Textarea
                                                 value={exp.highlights.join("\n")}
                                                 onChange={(e) => {
-                                                    // @ts-ignore
                                                     const newExp = [...data.experience];
                                                     newExp[idx] = {
                                                         ...newExp[idx],
-                                                        highlights: e.target.value.split("\n").filter(line => line.trim())
+                                                        highlights: e.target.value.split("\n").filter((line: string) => line.trim())
                                                     };
-                                                    setData(prev => ({ ...prev, experience: newExp }));
+                                                    setData((prev: any) => ({ ...prev, experience: newExp }));
                                                 }}
                                                 className="min-h-[100px]"
                                                 placeholder="- Achieved X..."
@@ -434,9 +424,8 @@ const Admin = () => {
                                     </div>
                                 ))}
                                 <Button variant="outline" className="w-full gap-2" onClick={() => {
-                                    // @ts-ignore
-                                    setData(prev => ({
-                                        ...prev, experience: [...prev.experience, {
+                                    setData((prev: any) => ({
+                                        ...prev, experience: [...(prev.experience || []), {
                                             role: "New Role",
                                             organization: "Company",
                                             duration: "Jan 2024 - Present",
@@ -455,15 +444,13 @@ const Admin = () => {
                         <Card className="bg-card/50 border-white/5">
                             <CardHeader><CardTitle>Projects</CardTitle></CardHeader>
                             <CardContent className="space-y-6">
-                                {/* @ts-ignore */}
-                                {data.projects.map((proj, idx) => (
+                                {(data.projects || []).map((proj: any, idx: number) => (
                                     <div key={idx} className="p-4 border border-white/10 rounded bg-black/20 space-y-3">
                                         <div className="flex justify-between items-center">
                                             <label className="text-sm font-medium">Project Title</label>
                                             <Button variant="ghost" size="icon" onClick={() => {
-                                                // @ts-ignore
-                                                const newProjects = data.projects.filter((_, i) => i !== idx);
-                                                setData(prev => ({ ...prev, projects: newProjects }));
+                                                const newProjects = data.projects.filter((_: any, i: number) => i !== idx);
+                                                setData((prev: any) => ({ ...prev, projects: newProjects }));
                                             }} className="text-destructive hover:text-destructive/80">
                                                 <Trash2 size={16} />
                                             </Button>
@@ -471,10 +458,9 @@ const Admin = () => {
                                         <Input
                                             value={proj.title}
                                             onChange={(e) => {
-                                                // @ts-ignore
                                                 const newProjects = [...data.projects];
                                                 newProjects[idx] = { ...newProjects[idx], title: e.target.value };
-                                                setData(prev => ({ ...prev, projects: newProjects }));
+                                                setData((prev: any) => ({ ...prev, projects: newProjects }));
                                             }}
                                             placeholder="Project Title"
                                         />
@@ -484,10 +470,9 @@ const Admin = () => {
                                             <Textarea
                                                 value={proj.description}
                                                 onChange={(e) => {
-                                                    // @ts-ignore
                                                     const newProjects = [...data.projects];
                                                     newProjects[idx] = { ...newProjects[idx], description: e.target.value };
-                                                    setData(prev => ({ ...prev, projects: newProjects }));
+                                                    setData((prev: any) => ({ ...prev, projects: newProjects }));
                                                 }}
                                                 className="min-h-[100px]"
                                             />
@@ -498,22 +483,33 @@ const Admin = () => {
                                             <Input
                                                 value={proj.tags.join(", ")}
                                                 onChange={(e) => {
-                                                    // @ts-ignore
                                                     const newProjects = [...data.projects];
                                                     newProjects[idx] = {
                                                         ...newProjects[idx],
-                                                        tags: e.target.value.split(",").map(s => s.trim()).filter(s => s)
+                                                        tags: e.target.value.split(",").map((s: string) => s.trim()).filter((s: string) => s)
                                                     };
-                                                    setData(prev => ({ ...prev, projects: newProjects }));
+                                                    setData((prev: any) => ({ ...prev, projects: newProjects }));
                                                 }}
                                                 placeholder="React, Demo, Web..."
+                                            />
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium">Project Link</label>
+                                            <Input
+                                                value={proj.link || ""}
+                                                onChange={(e) => {
+                                                    const newProjects = [...data.projects];
+                                                    newProjects[idx] = { ...newProjects[idx], link: e.target.value };
+                                                    setData((prev: any) => ({ ...prev, projects: newProjects }));
+                                                }}
+                                                placeholder="https://example.com"
                                             />
                                         </div>
                                     </div>
                                 ))}
                                 <Button variant="outline" className="w-full gap-2" onClick={() => {
-                                    // @ts-ignore
-                                    setData(prev => ({ ...prev, projects: [...prev.projects, { title: "New Project", description: "Description...", tags: [], status: "finished" }] }));
+                                    setData((prev: any) => ({ ...prev, projects: [...(prev.projects || []), { title: "New Project", description: "Description...", tags: [], status: "finished", link: "#" }] }));
                                 }}>
                                     <Plus size={16} /> Add Project
                                 </Button>
@@ -527,15 +523,13 @@ const Admin = () => {
                                 <CardTitle>Certifications</CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-6">
-                                {certifications.map((cert, idx) => (
+                                {certifications.map((cert: any, idx: number) => (
                                     <div key={idx} className="p-4 border border-white/10 rounded bg-black/20 space-y-3">
                                         <div className="flex justify-between items-center">
                                             <label className="text-sm font-medium">Certificate Title</label>
                                             <Button variant="ghost" size="icon" onClick={() => {
-                                                // @ts-ignore
-                                                const newCerts = certifications.filter((_, i) => i !== idx);
-                                                // @ts-ignore
-                                                setData(prev => ({ ...prev, certifications: newCerts }));
+                                                const newCerts = certifications.filter((_: any, i: number) => i !== idx);
+                                                setData((prev: any) => ({ ...prev, certifications: newCerts }));
                                             }} className="text-destructive hover:text-destructive/80">
                                                 <Trash2 size={16} />
                                             </Button>
@@ -545,8 +539,7 @@ const Admin = () => {
                                             onChange={(e) => {
                                                 const newCerts = [...certifications];
                                                 newCerts[idx] = { ...newCerts[idx], title: e.target.value };
-                                                // @ts-ignore
-                                                setData(prev => ({ ...prev, certifications: newCerts }));
+                                                setData((prev: any) => ({ ...prev, certifications: newCerts }));
                                             }}
                                             placeholder="Certificate Title"
                                         />
@@ -570,8 +563,7 @@ const Admin = () => {
                                     </div>
                                 ))}
                                 <Button variant="outline" className="w-full gap-2" onClick={() => {
-                                    // @ts-ignore
-                                    setData(prev => ({ ...prev, certifications: [...prev.certifications, { title: "New Certification", url: "#", type: "other" }] }));
+                                    setData((prev: any) => ({ ...prev, certifications: [...(prev.certifications || []), { title: "New Certification", url: "#", type: "other" }] }));
                                 }}>
                                     <Plus size={16} /> Add Certification
                                 </Button>
@@ -583,16 +575,13 @@ const Admin = () => {
                         <Card className="bg-card/50 border-white/5">
                             <CardHeader><CardTitle>Blog Posts</CardTitle></CardHeader>
                             <CardContent className="space-y-6">
-                                {/* @ts-ignore */}
-                                {(data.posts || []).map((post, idx) => (
+                                {(data.posts || []).map((post: any, idx: number) => (
                                     <div key={idx} className="p-4 border border-white/10 rounded bg-black/20 space-y-4">
                                         <div className="flex justify-between items-center">
                                             <label className="text-sm font-medium">Post Title</label>
                                             <Button variant="ghost" size="icon" onClick={() => {
-                                                // @ts-ignore
-                                                const newPosts = data.posts.filter((_, i) => i !== idx);
-                                                // @ts-ignore
-                                                setData(prev => ({ ...prev, posts: newPosts }));
+                                                const newPosts = data.posts.filter((_: any, i: number) => i !== idx);
+                                                setData((prev: any) => ({ ...prev, posts: newPosts }));
                                             }} className="text-destructive hover:text-destructive/80">
                                                 <Trash2 size={16} />
                                             </Button>
@@ -600,11 +589,9 @@ const Admin = () => {
                                         <Input
                                             value={post.title}
                                             onChange={(e) => {
-                                                // @ts-ignore
                                                 const newPosts = [...data.posts];
                                                 newPosts[idx] = { ...newPosts[idx], title: e.target.value };
-                                                // @ts-ignore
-                                                setData(prev => ({ ...prev, posts: newPosts }));
+                                                setData((prev: any) => ({ ...prev, posts: newPosts }));
                                             }}
                                             placeholder="Post Title"
                                         />
@@ -614,11 +601,9 @@ const Admin = () => {
                                             <Input
                                                 value={post.subtitle}
                                                 onChange={(e) => {
-                                                    // @ts-ignore
                                                     const newPosts = [...data.posts];
                                                     newPosts[idx] = { ...newPosts[idx], subtitle: e.target.value };
-                                                    // @ts-ignore
-                                                    setData(prev => ({ ...prev, posts: newPosts }));
+                                                    setData((prev: any) => ({ ...prev, posts: newPosts }));
                                                 }}
                                                 placeholder="Short hook..."
                                             />
@@ -630,11 +615,9 @@ const Admin = () => {
                                                 <Input
                                                     value={post.date}
                                                     onChange={(e) => {
-                                                        // @ts-ignore
                                                         const newPosts = [...data.posts];
                                                         newPosts[idx] = { ...newPosts[idx], date: e.target.value };
-                                                        // @ts-ignore
-                                                        setData(prev => ({ ...prev, posts: newPosts }));
+                                                        setData((prev: any) => ({ ...prev, posts: newPosts }));
                                                     }}
                                                     placeholder="Dec 15, 2024"
                                                 />
@@ -644,11 +627,9 @@ const Admin = () => {
                                                 <Input
                                                     value={post.readTime}
                                                     onChange={(e) => {
-                                                        // @ts-ignore
                                                         const newPosts = [...data.posts];
                                                         newPosts[idx] = { ...newPosts[idx], readTime: e.target.value };
-                                                        // @ts-ignore
-                                                        setData(prev => ({ ...prev, posts: newPosts }));
+                                                        setData((prev: any) => ({ ...prev, posts: newPosts }));
                                                     }}
                                                     placeholder="5 min read"
                                                 />
@@ -666,11 +647,9 @@ const Admin = () => {
                                                         if (file) {
                                                             const reader = new FileReader();
                                                             reader.onloadend = () => {
-                                                                // @ts-ignore
                                                                 const newPosts = [...data.posts];
                                                                 newPosts[idx] = { ...newPosts[idx], image: reader.result as string };
-                                                                // @ts-ignore
-                                                                setData(prev => ({ ...prev, posts: newPosts }));
+                                                                setData((prev: any) => ({ ...prev, posts: newPosts }));
                                                                 toast.success("Image uploaded");
                                                             };
                                                             reader.readAsDataURL(file);
@@ -686,11 +665,9 @@ const Admin = () => {
                                             <Input
                                                 value={post.image}
                                                 onChange={(e) => {
-                                                    // @ts-ignore
                                                     const newPosts = [...data.posts];
                                                     newPosts[idx] = { ...newPosts[idx], image: e.target.value };
-                                                    // @ts-ignore
-                                                    setData(prev => ({ ...prev, posts: newPosts }));
+                                                    setData((prev: any) => ({ ...prev, posts: newPosts }));
                                                 }}
                                                 placeholder="Or paste image URL"
                                                 className="mt-2"
@@ -702,11 +679,9 @@ const Admin = () => {
                                             <Textarea
                                                 value={post.content}
                                                 onChange={(e) => {
-                                                    // @ts-ignore
                                                     const newPosts = [...data.posts];
                                                     newPosts[idx] = { ...newPosts[idx], content: e.target.value };
-                                                    // @ts-ignore
-                                                    setData(prev => ({ ...prev, posts: newPosts }));
+                                                    setData((prev: any) => ({ ...prev, posts: newPosts }));
                                                 }}
                                                 className="min-h-[200px] font-mono text-xs"
                                                 placeholder="<p>Write your content here...</p>"
@@ -718,14 +693,12 @@ const Admin = () => {
                                             <Input
                                                 value={post.tags.join(", ")}
                                                 onChange={(e) => {
-                                                    // @ts-ignore
                                                     const newPosts = [...data.posts];
                                                     newPosts[idx] = {
                                                         ...newPosts[idx],
-                                                        tags: e.target.value.split(",").map(s => s.trim()).filter(s => s)
+                                                        tags: e.target.value.split(",").map((s: string) => s.trim()).filter((s: string) => s)
                                                     };
-                                                    // @ts-ignore
-                                                    setData(prev => ({ ...prev, posts: newPosts }));
+                                                    setData((prev: any) => ({ ...prev, posts: newPosts }));
                                                 }}
                                                 placeholder="Cybersecurity, Tech..."
                                             />
@@ -733,8 +706,7 @@ const Admin = () => {
                                     </div>
                                 ))}
                                 <Button variant="outline" className="w-full gap-2" onClick={() => {
-                                    // @ts-ignore
-                                    setData(prev => ({
+                                    setData((prev: any) => ({
                                         ...prev, posts: [
                                             ...(prev.posts || []),
                                             {
@@ -770,15 +742,15 @@ const Admin = () => {
                                 {messages.length === 0 ? (
                                     <p className="text-muted-foreground text-center py-8">No messages yet.</p>
                                 ) : (
-                                    messages.map((msg) => (
-                                        <div key={msg.id} className="p-4 border border-white/10 rounded bg-black/20 flex flex-col gap-2">
+                                    messages.map((msg: any) => (
+                                        <div key={msg._id || msg.id} className="p-4 border border-white/10 rounded bg-black/20 flex flex-col gap-2">
                                             <div className="flex justify-between items-start">
                                                 <div>
                                                     <h4 className="font-bold text-lg">{msg.name}</h4>
                                                     <p className="text-sm text-primary">{msg.email}</p>
-                                                    <p className="text-xs text-muted-foreground">{msg.date}</p>
+                                                    <p className="text-xs text-muted-foreground">{new Date(msg.date).toLocaleDateString()}</p>
                                                 </div>
-                                                <Button variant="ghost" size="icon" onClick={() => handleDeleteMessage(msg.id)} className="text-destructive hover:text-destructive/80">
+                                                <Button variant="ghost" size="icon" onClick={() => handleDeleteMessage(msg.id, msg._id)} className="text-destructive hover:text-destructive/80">
                                                     <Trash2 size={16} />
                                                 </Button>
                                             </div>

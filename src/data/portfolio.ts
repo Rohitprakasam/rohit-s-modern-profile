@@ -132,6 +132,17 @@ export const portfolioData = {
     ],
     "projects": [
         {
+            "title": "Cattle Monitoring System",
+            "description": "A system to monitor cattle health and behavior using AI and IoT technologies.",
+            "tags": [
+                "AI",
+                "IoT",
+                "Monitoring"
+            ],
+            "status": "finished",
+            "link": "https://huggingface.co/spaces/MadhudhanushK/CattleMonitoringSystem"
+        },
+        {
             "title": "Phishing Attack Simulation & Analysis",
             "description": "Designed controlled phishing campaigns to evaluate user susceptibility and provided recommendations that improved awareness by 25%.",
             "tags": [
@@ -139,7 +150,8 @@ export const portfolioData = {
                 "Phishing",
                 "Awareness"
             ],
-            "status": "finished"
+            "status": "finished",
+            "link": "#"
         },
         {
             "title": "Cybersecurity Awareness Training Module",
@@ -149,7 +161,8 @@ export const portfolioData = {
                 "Security",
                 "Web"
             ],
-            "status": "finished"
+            "status": "finished",
+            "link": "#"
         },
         {
             "title": "Wi-Fi Security Assessment",
@@ -158,7 +171,8 @@ export const portfolioData = {
                 "WiFi",
                 "Penetration Testing"
             ],
-            "status": "finished"
+            "status": "finished",
+            "link": "#"
         }
     ],
     "certifications": [

@@ -13,9 +13,12 @@ const ProjectsSection = () => {
 
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
                     {portfolioData.projects.map((project: any, index: number) => (
-                        <div
+                        <a
+                            href={project.link || "#"}
+                            target="_blank"
+                            rel="noopener noreferrer"
                             key={index}
-                            className="bg-card/20 backdrop-blur-sm border border-white/5 rounded-xl overflow-hidden hover:border-primary/50 hover:shadow-[0_10px_50px_-20px_rgba(234,88,12,0.3)] hover:-translate-y-2 transition-all duration-500 group cursor-target flex flex-col animate-fade-in-up"
+                            className="bg-card/20 backdrop-blur-sm border border-white/5 rounded-xl overflow-hidden hover:border-primary/50 hover:shadow-[0_10px_50px_-20px_rgba(234,88,12,0.3)] hover:-translate-y-2 transition-all duration-500 group cursor-pointer flex flex-col animate-fade-in-up block"
                             style={{ animationDelay: `${index * 0.15}s` }}
                         >
                             <div className="h-2 bg-gradient-to-r from-transparent via-primary/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
@@ -43,7 +46,7 @@ const ProjectsSection = () => {
                                     ))}
                                 </div>
                             </div>
-                        </div>
+                        </a>
                     ))}
                 </div>
             </div>

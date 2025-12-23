@@ -1,7 +1,7 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { portfolioData, Post } from "@/data/portfolio";
+import { usePortfolioData } from "@/hooks/usePortfolioData";
+import { Post } from "@/data/portfolio";
 import PostCard from "@/components/blog/PostCard";
 import Header from "@/components/Header";
 import { Input } from "@/components/ui/input";
@@ -11,30 +11,15 @@ import { motion } from "framer-motion";
 
 const Blog = () => {
     const navigate = useNavigate();
-    const [posts, setPosts] = useState<Post[]>([]);
+    const portfolioData = usePortfolioData();
+    const posts = (portfolioData.posts || []) as Post[]; // Explicit cast
     const [searchQuery, setSearchQuery] = useState("");
     const [selectedTag, setSelectedTag] = useState<string | null>(null);
 
-    useEffect(() => {
-        // Load from local storage or fallback to default data
-        const saved = localStorage.getItem("portfolioData");
-        if (saved) {
-            try {
-                const parsed = JSON.parse(saved);
-                if (parsed.posts) {
-                    setPosts(parsed.posts);
-                } else {
-                    setPosts(portfolioData.posts || []);
-                }
-            } catch (e) {
-                setPosts(portfolioData.posts || []);
-            }
-        } else {
-            setPosts(portfolioData.posts || []);
-        }
-    }, []);
+    // Removed manual loading from LS, usePortfolioData handles it via ReactQuery at root
 
-    const filteredPosts = posts.filter(post => {
+    const filteredPosts = posts.filter((post: Post) => {
+        // ... filtering logic matches existing ...
         const matchesSearch = post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
             post.subtitle.toLowerCase().includes(searchQuery.toLowerCase());
         const matchesTag = selectedTag ? post.tags.includes(selectedTag) : true;

@@ -29,14 +29,14 @@ const ContactSection = () => {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(formData),
         }).then(async (res) => {
-            if (!res.ok) throw new Error("Failed to send to GitHub");
+            if (!res.ok) throw new Error("Failed to send message");
             return res.json();
         });
 
         toast.promise(promise, {
             loading: "Sending message...",
-            success: "Message sent! (Saved to GitHub Issues)",
-            error: "Saved locally (GitHub sync failed)",
+            success: "Message sent successfully!",
+            error: "Saved locally (Server sync failed)",
         });
 
         setFormData({ name: "", email: "", message: "" });

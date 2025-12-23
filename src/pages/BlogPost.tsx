@@ -1,7 +1,8 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { portfolioData, Post, Comment } from "@/data/portfolio";
+import { usePortfolioData } from "@/hooks/usePortfolioData";
+import { Post, Comment } from "@/data/portfolio";
 import Header from "@/components/Header";
 import CommentSection from "@/components/blog/CommentSection";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -10,39 +11,23 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Clock, Calendar, Share2, Heart } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 
 const BlogPost = () => {
     const { id } = useParams();
     const navigate = useNavigate();
-    const [post, setPost] = useState<Post | null>(null);
-    const [loading, setLoading] = useState(true);
+    const { posts } = usePortfolioData();
+    const queryClient = useQueryClient();
 
-    useEffect(() => {
-        const saved = localStorage.getItem("portfolioData");
-        let allPosts = portfolioData.posts || [];
+    // Find post in the loaded data
+    const post = posts.find((p: any) => p.id === id || p._id === id); // Handle both string ID and Mongo _id
 
-        if (saved) {
-            try {
-                const parsed = JSON.parse(saved);
-                if (parsed.posts) {
-                    allPosts = parsed.posts;
-                }
-            } catch (e) {
-                console.error(e);
-            }
-        }
-
-        const found = allPosts.find(p => p.id === id);
-        setPost(found || null);
-        setLoading(false);
-    }, [id]);
-
-    const handleAddComment = (text: string) => {
+    const handleAddComment = async (text: string) => {
         if (!post) return;
 
         const newComment: Comment = {
             id: Date.now().toString(),
-            user: "Guest User", // In a real app, this would be the logged-in user
+            user: "Guest User",
             avatar: "",
             text,
             date: "Just now",
@@ -50,33 +35,49 @@ const BlogPost = () => {
         };
 
         const updatedPost = { ...post, comments: [newComment, ...post.comments] };
-        setPost(updatedPost);
 
-        // Update local storage
         try {
-            const saved = localStorage.getItem("portfolioData");
-            let data = saved ? JSON.parse(saved) : { ...portfolioData };
+            const res = await fetch("/api/crud?collection=posts", {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(updatedPost)
+            });
 
-            // Ensure posts array exists in data structure beacuse we might correspond to "portfolioData" fallback
-            if (!data.posts) data.posts = portfolioData.posts || [];
+            if (!res.ok) throw new Error("Failed to post comment");
 
-            const postIndex = data.posts.findIndex((p: Post) => p.id === post.id);
-            if (postIndex >= 0) {
-                data.posts[postIndex] = updatedPost;
-            } else {
-                // If for some reason it's not found in the source array but we rendered it, something is odd.
-                // But let's safely ignore or add it.
-            }
-
-            localStorage.setItem("portfolioData", JSON.stringify(data));
             toast.success("Comment posted!");
+            queryClient.invalidateQueries({ queryKey: ["posts"] });
         } catch (e) {
+            console.error(e);
             toast.error("Failed to save comment.");
         }
     };
 
-    if (loading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
-    if (!post) return <div className="min-h-screen flex items-center justify-center">Post not found</div>;
+    const handleLike = async () => {
+        if (!post) return;
+        const updatedPost = { ...post, likes: (post.likes || 0) + 1 };
+
+        try {
+            const res = await fetch("/api/crud?collection=posts", {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(updatedPost)
+            });
+            if (!res.ok) throw new Error("Failed to like post");
+            toast.success("Liked!");
+            queryClient.invalidateQueries({ queryKey: ["posts"] });
+        } catch (e) {
+            toast.error("Failed to save like");
+        }
+    };
+
+    // Remove local loading state as root handles it, or handle specific post 404
+    if (!post && posts.length > 0) return <div className="min-h-screen flex items-center justify-center">Post not found</div>;
+    // If posts are still loading (empty array but query running), we depend on parent. 
+    // But since we use usePortfolioData, the parent Index handles global loading. 
+    // However, if accessed directly via URL, we need to handle "loading" vs "not found".
+    // For now, assuming Index/Main provider handles initial load or we show "Post not found" momentarily.
+    if (!post) return <div className="min-h-screen flex items-center justify-center">Loading or Post not found...</div>;
 
     return (
         <div className="min-h-screen bg-background text-foreground selection:bg-primary/20">
@@ -120,9 +121,11 @@ const BlogPost = () => {
                                 <Button variant="outline" size="icon" className="rounded-full">
                                     <Share2 size={18} />
                                 </Button>
-                                <Button variant="outline" size="icon" className="rounded-full">
-                                    <Heart size={18} />
+                                <Button variant="outline" size="icon" className="rounded-full" onClick={handleLike}>
+                                    <Heart size={18} className={post.likes > 0 ? "fill-red-500 text-red-500" : ""} />
+                                    <span className="ml-2 sr-only">{post.likes}</span>
                                 </Button>
+                                {post.likes > 0 && <span className="text-sm self-center text-muted-foreground">{post.likes}</span>}
                             </div>
                         </div>
                     </div>

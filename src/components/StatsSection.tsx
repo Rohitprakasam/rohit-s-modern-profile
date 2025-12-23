@@ -1,10 +1,22 @@
-const stats = [
-  { value: "Fresher", label: "Experience" },
-  { value: "5+", label: "Projects done" },
-  { value: "3+", label: "Happy Clients" },
-];
+import { usePortfolioData } from "@/hooks/usePortfolioData";
 
 const StatsSection = () => {
+  const { projects = [], experience = [] } = usePortfolioData();
+
+  // Calculate dynamic stats
+  const projectCount = projects.length;
+  // Calculate experience? Or just use length of items?
+  const experienceCount = experience.length;
+  // "Happy Clients" is subjective, maybe hardcode or store in profile meta?
+  // For now let's keep hardcoded or derive if we had client data.
+  // We'll stick to dynamic Projects and Experience count.
+
+  const stats = [
+    { value: experienceCount > 0 ? `${experienceCount}+` : "Fresher", label: "Experience" },
+    { value: `${projectCount}+`, label: "Projects done" },
+    { value: "3+", label: "Happy Clients" }, // Keep static or add to DB later
+  ];
+
   return (
     <section className="py-8 bg-card border-t border-b border-border">
       <div className="container mx-auto px-6">

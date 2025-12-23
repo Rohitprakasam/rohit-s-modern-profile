@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Suspense, lazy } from "react";
 import Index from "./pages/Index";
+import SmoothScroll from "./components/SmoothScroll";
 
 // Lazy load pages
 const Admin = lazy(() => import("./pages/Admin"));
@@ -25,6 +26,7 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
+      <SmoothScroll />
       <BrowserRouter>
         <Suspense fallback={<LoadingFallback />}>
           <Routes>
