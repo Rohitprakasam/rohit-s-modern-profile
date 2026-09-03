@@ -1,5 +1,5 @@
-import clientPromise from './mongodb';
-import { generateEmbedding } from './embeddings';
+import clientPromise from './mongodb.js';
+import { generateEmbedding } from './embeddings.js';
 
 const DB_NAME = process.env.MONGODB_DB_NAME || "rohit_portfolio";
 

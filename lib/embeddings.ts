@@ -1,4 +1,4 @@
-import clientPromise from './mongodb';
+import clientPromise from './mongodb.js';
 
 const DB_NAME = process.env.MONGODB_DB_NAME || "rohit_portfolio";
 

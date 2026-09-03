@@ -1,7 +1,7 @@
-import clientPromise from './mongodb';
-import { generateWithTools } from './gemini';
-import { searchMemory } from './embeddings';
-import { getRecentConversation, embedAndStoreTrackerEntry } from './memory';
+import clientPromise from './mongodb.js';
+import { generateWithTools } from './gemini.js';
+import { searchMemory } from './embeddings.js';
+import { getRecentConversation, embedAndStoreTrackerEntry } from './memory.js';
 
 const DB_NAME = process.env.MONGODB_DB_NAME || "rohit_portfolio";
 

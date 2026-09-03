@@ -1,5 +1,5 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
-import clientPromise from '../lib/mongodb';
+import clientPromise from '../lib/mongodb.js';
 import { ObjectId } from 'mongodb';
 
 const DB_NAME = process.env.MONGODB_DB_NAME || "rohit_portfolio";

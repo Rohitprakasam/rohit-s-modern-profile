@@ -1,7 +1,7 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
-import clientPromise from '../lib/mongodb';
-import { generateWithGemini } from '../lib/gemini';
-import { sendWhatsAppText } from '../lib/whatsapp';
+import clientPromise from '../lib/mongodb.js';
+import { generateWithGemini } from '../lib/gemini.js';
+import { sendWhatsAppText } from '../lib/whatsapp.js';
 
 const DB_NAME = process.env.MONGODB_DB_NAME || "rohit_portfolio";
 
