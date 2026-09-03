@@ -67,6 +67,13 @@ type TaskTab = "chat" | "exam" | "water" | "budget" | "settings";
 
 /* ─── Main Page Component ─── */
 export default function TaskPage() {
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    return localStorage.getItem("task_authenticated") === "true" || sessionStorage.getItem("task_authenticated") === "true";
+  });
+  const [authPassword, setAuthPassword] = useState("");
+  const [authError, setAuthError] = useState("");
+  const [authLoading, setAuthLoading] = useState(false);
+
   const [entries, setEntries] = useState<TrackerEntry[] | null>(null);
   const [savingsGoals, setSavingsGoals] = useState<any[]>([]);
   const [input, setInput] = useState("");
@@ -90,7 +97,40 @@ export default function TaskPage() {
   const [whatsappSending, setWhatsappSending] = useState(false);
   const [whatsappStatus, setWhatsappStatus] = useState<"idle" | "success" | "error">("idle");
 
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!authPassword.trim() || authLoading) return;
+    setAuthLoading(true);
+    setAuthError("");
+
+    try {
+      const res = await fetch("/api/auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: authPassword }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        localStorage.setItem("task_authenticated", "true");
+        setIsAuthenticated(true);
+      } else {
+        setAuthError(data.message || "Invalid password");
+      }
+    } catch {
+      setAuthError("Failed to authenticate. Check connection.");
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("task_authenticated");
+    sessionStorage.removeItem("task_authenticated");
+    setIsAuthenticated(false);
+  };
+
   const loadEntries = useCallback(() => {
+    if (!isAuthenticated) return;
     fetch("/api/tracker")
       .then((r) => r.json())
       .then((data) => {
@@ -98,9 +138,10 @@ export default function TaskPage() {
         if (Array.isArray(data.savingsGoals)) setSavingsGoals(data.savingsGoals);
       })
       .catch(() => {});
-  }, []);
+  }, [isAuthenticated]);
 
   const loadSettings = useCallback(() => {
+    if (!isAuthenticated) return;
     fetch("/api/settings")
       .then((r) => r.json())
       .then((data) => {
@@ -110,9 +151,14 @@ export default function TaskPage() {
         if (data?.examDate) setExamDate(data.examDate);
       })
       .catch(() => {});
-  }, []);
+  }, [isAuthenticated]);
 
-  useEffect(() => { loadEntries(); loadSettings(); }, [loadEntries, loadSettings]);
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadEntries();
+      loadSettings();
+    }
+  }, [isAuthenticated, loadEntries, loadSettings]);
   useEffect(() => { if (timelineRef.current) timelineRef.current.scrollTop = timelineRef.current.scrollHeight; }, [entries]);
 
   /* ─── Actions ─── */
@@ -227,6 +273,55 @@ export default function TaskPage() {
     { id: "settings", label: "Settings", emoji: "⚙️" },
   ];
 
+  if (!isAuthenticated) {
+    return (
+      <main className="min-h-screen bg-[#0a0a0a] text-white flex items-center justify-center p-4">
+        <div className="fixed inset-0 -z-10 pointer-events-none bg-gradient-to-br from-orange-950/30 via-transparent to-blue-950/30" />
+        <div className="w-full max-w-md bg-white/5 border border-white/10 rounded-2xl p-8 backdrop-blur-xl shadow-2xl space-y-6 text-center">
+          <div className="w-16 h-16 rounded-full bg-orange-500/20 border border-orange-500/30 flex items-center justify-center mx-auto">
+            <span className="text-3xl">🔒</span>
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-white">RohitOS Dashboard</h1>
+            <p className="text-xs text-gray-400 mt-1">Enter your admin password to access your tasks</p>
+          </div>
+          <form onSubmit={handleLogin} className="space-y-4 text-left">
+            <div>
+              <label className="block text-xs uppercase tracking-wider text-gray-400 mb-1.5 font-medium">
+                Admin Password
+              </label>
+              <input
+                type="password"
+                required
+                value={authPassword}
+                onChange={(e) => setAuthPassword(e.target.value)}
+                placeholder="Enter password..."
+                className="w-full h-11 px-4 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-orange-500 placeholder-gray-600 transition"
+              />
+            </div>
+            {authError && (
+              <p className="text-xs text-red-400 font-medium bg-red-500/10 border border-red-500/20 p-2.5 rounded-xl text-center">
+                {authError}
+              </p>
+            )}
+            <button
+              type="submit"
+              disabled={authLoading}
+              className="w-full h-11 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-xl transition-all shadow-lg shadow-orange-500/20 disabled:opacity-50"
+            >
+              {authLoading ? "Authenticating..." : "Unlock Dashboard"}
+            </button>
+          </form>
+          <div className="pt-2 border-t border-white/10">
+            <Link to="/" className="text-xs text-gray-500 hover:text-gray-300 transition">
+              ← Return to Portfolio
+            </Link>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen bg-[#0a0a0a] text-white">
       {/* Background gradient */}
@@ -256,10 +351,13 @@ export default function TaskPage() {
               {whatsappSending ? "Sending..." : whatsappStatus === "success" ? "Sent!" : whatsappStatus === "error" ? "Failed" : "WhatsApp"}
             </span>
           </button>
-          <Link to="/admin" className="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:bg-white/5 transition border border-white/10">
+          <Link to="/admin" className="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:bg-white/5 transition border border-white/10" title="Admin Settings">
             ⚙️
           </Link>
-          <Link to="/" className="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:bg-white/5 transition border border-white/10">
+          <button onClick={handleLogout} title="Log out" className="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:bg-white/5 transition border border-white/10">
+            🔒
+          </button>
+          <Link to="/" className="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:bg-white/5 transition border border-white/10" title="Home">
             🏠
           </Link>
         </div>

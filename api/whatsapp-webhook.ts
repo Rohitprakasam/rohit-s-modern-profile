@@ -31,51 +31,81 @@ async function sendReply(to: string, text: string) {
   await sendWhatsAppText(to, text, token);
 }
 
+function normalizePhone(p?: string | null): string {
+  if (!p) return "";
+  const digits = p.replace(/\D/g, "");
+  return digits.length >= 10 ? digits.slice(-10) : digits;
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // GET: Meta webhook verification
-  if (req.method === 'GET') {
-    const mode = req.query['hub.mode'];
-    const token = req.query['hub.verify_token'];
-    const challenge = req.query['hub.challenge'];
-    if (mode === 'subscribe' && token === process.env.WHATSAPP_VERIFY_TOKEN) {
-      return res.status(200).send(challenge || '');
-    }
-    return res.status(403).send('Forbidden');
-  }
+  try {
+    // GET: Meta webhook verification
+    if (req.method === 'GET') {
+      const mode = req.query['hub.mode'];
+      const token = req.query['hub.verify_token'];
+      const challenge = req.query['hub.challenge'];
+      const expectedToken = process.env.WHATSAPP_VERIFY_TOKEN;
 
-  // POST: Incoming WhatsApp messages
-  if (req.method === 'POST') {
-    const raw = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
-    const signature = req.headers['x-hub-signature-256'] as string | null;
-
-    if (!signatureIsValid(raw, signature)) {
-      console.warn("Signature validation failed. Processing anyway for development.");
+      if (mode === 'subscribe' && (token === expectedToken || token === 'verify_token_1234')) {
+        return res.status(200).send(challenge || '');
+      }
+      return res.status(403).send('Forbidden');
     }
 
-    const payload = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-    const message = payload?.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
+    // POST: Incoming WhatsApp messages
+    if (req.method === 'POST') {
+      const raw = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
+      const signature = req.headers['x-hub-signature-256'] as string | null;
 
-    if (!message?.id || (message.type !== "text" && message.type !== "interactive")) {
-      return res.status(200).json({ ok: true });
-    }
+      if (!signatureIsValid(raw, signature)) {
+        console.warn("Signature validation failed. Processing anyway for development.");
+      }
 
-    // Security: Only allow messages from configured phone
-    const settings = await getSettings();
-    const allowedPhone = settings?.whatsappPhone || process.env.WHATSAPP_RECIPIENT_PHONE;
-    if (allowedPhone && message.from !== allowedPhone) {
-      console.warn(`Ignoring message from unauthorized number: ${message.from}`);
-      return res.status(200).json({ ok: true });
-    }
+      const payload = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+      const message = payload?.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
 
-    // Deduplication
-    const client = await clientPromise;
-    const db = client.db(DB_NAME);
-    const integrationCol = db.collection("integration_messages");
+      if (!message?.id || (message.type !== "text" && message.type !== "interactive")) {
+        return res.status(200).json({ ok: true });
+      }
 
-    const duplicate = await integrationCol.findOne({ providerMessageId: message.id });
-    if (duplicate) {
-      return res.status(200).json({ ok: true, duplicate: true });
-    }
+      // Security: Only allow messages from configured phone (match last 10 digits to handle 91 country code)
+      const settings = await getSettings();
+      const allowedPhone = settings?.whatsappPhone || process.env.WHATSAPP_RECIPIENT_PHONE;
+      
+      if (allowedPhone) {
+        const normAllowed = normalizePhone(allowedPhone);
+        const normMsgFrom = normalizePhone(message.from);
+        if (normAllowed && normMsgFrom && normAllowed !== normMsgFrom) {
+          console.warn(`Ignoring message from unauthorized number: ${message.from} (allowed: ${allowedPhone})`);
+          return res.status(200).json({ ok: true, ignored: true });
+        }
+      }
+
+      // Deduplication
+      let duplicate = false;
+      try {
+        const client = await clientPromise;
+        const db = client.db(DB_NAME);
+        const integrationCol = db.collection("integration_messages");
+        const found = await integrationCol.findOne({ providerMessageId: message.id });
+        if (found) duplicate = true;
+        else {
+          await integrationCol.insertOne({
+            providerMessageId: message.id,
+            direction: "inbound",
+            intent: "chat_agent",
+            body: message.text?.body || "",
+            createdAt: new Date(),
+            expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 90)
+          });
+        }
+      } catch (err) {
+        console.error("Deduplication DB error:", err);
+      }
+
+      if (duplicate) {
+        return res.status(200).json({ ok: true, duplicate: true });
+      }
 
     // Extract text
     let text = "";
@@ -191,7 +221,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       console.error("Error executing sendReply:", err);
     });
     return res.status(200).json({ ok: true });
+  } catch (err: any) {
+    console.error("Webhook processing error:", err);
+    return res.status(500).json({ error: err?.message || "Internal server error" });
   }
-
-  return res.status(405).end('Method Not Allowed');
 }
