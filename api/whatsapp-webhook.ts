@@ -37,9 +37,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const mode = req.query['hub.mode'];
     const token = req.query['hub.verify_token'];
     const challenge = req.query['hub.challenge'];
-    const expectedToken = process.env.WHATSAPP_VERIFY_TOKEN || "verify_token_1234";
-
-    if (mode === 'subscribe' && (token === expectedToken || token === 'verify_token_1234')) {
+    if (mode === 'subscribe' && token === process.env.WHATSAPP_VERIFY_TOKEN) {
       return res.status(200).send(challenge || '');
     }
     return res.status(403).send('Forbidden');
