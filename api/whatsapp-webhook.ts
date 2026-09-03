@@ -1,9 +1,9 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { createHmac, timingSafeEqual } from 'crypto';
-import clientPromise from '../lib/mongodb.js';
-import { runAgent } from '../lib/agent.js';
-import { saveMessage } from '../lib/memory.js';
-import { sendWhatsAppText } from '../lib/whatsapp.js';
+import clientPromise from '../lib/mongodb';
+import { runAgent } from '../lib/agent';
+import { saveMessage } from '../lib/memory';
+import { sendWhatsAppText } from '../lib/whatsapp';
 
 const DB_NAME = process.env.MONGODB_DB_NAME || "rohit_portfolio";
 
